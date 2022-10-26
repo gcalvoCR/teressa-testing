@@ -1,0 +1,17 @@
+.message--area {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-top: 100px;
+}
+
+@media screen and (max-width: 1199px) {
+  .message--area {
+    max-width: 550px;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .message--area {
+    max-width: 90%;
+  }
+}

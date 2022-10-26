@@ -1,0 +1,12 @@
+.row {
+  border: 1px solid black;
+}
+
+.passed {
+  color: green;
+}
+
+.failed {
+  color: red;
+  font-weight: bold;
+}
