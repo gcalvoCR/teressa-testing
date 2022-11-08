@@ -1,14 +1,5 @@
-const props: Record<string, string> = {};  
-for (let i = 1; i <= 75; i++) {
-  props[`c${i}`] = `prop${i}`;
-}
-// console.log(props);
 
-const eVars: Record<string, string> = {};
-for (let i = 1; i <= 250; i++) {
-  eVars[`v${i}`] = `eVar${i}`;
-}
-
+// ----------------------- Variable definition ----------------------- //
 const paramVariableMap = {
   aamlh : 'None',
   aamb: 'None',
@@ -81,10 +72,23 @@ const paramVariableMap = {
   zip: 'zip'
 }
 
+const props: Record<string, string> = {};  
+for (let i = 1; i <= 75; i++) {
+  props[`c${i}`] = `prop${i}`;
+}
+
+const eVars: Record<string, string> = {};
+for (let i = 1; i <= 250; i++) {
+  eVars[`v${i}`] = `eVar${i}`;
+}
+
 export const VAR_DICTIONARY = Object.assign(paramVariableMap, props, eVars);
 
+// ----------------------- Variable definition ----------------------- //
 
-export const ignoreListMap: Record<string, string> = {
+
+// ----------------------- Ignore List ----------------------- //
+export const IGNORE_LIST_MAP: Record<string, string> = {
   'pid':'Used in previous versions of Activity Map',
   'pidt':'Used in previous versions of Activity Map',
   'ot':'Used in previous versions of Activity Map',
@@ -109,10 +113,6 @@ export const ignoreListMap: Record<string, string> = {
   'prop': 'not required',
   'prop51': 'captured in event67',
   'c51': 'captured in event67',
-  // 'prop48',
-  // 'prop51',
-  // 'prop61',
-  // 'eVar111',
   'eVar112': 'irrelevant',
   'eVar130': 'not required',
   'getPreviousValue': '',
@@ -120,42 +120,39 @@ export const ignoreListMap: Record<string, string> = {
   'eVar60': 'dynamic variable',
   'eVar66': 'dynamic variable',
   'mcorgid': 'Added in later version of AppMeasurement',  //https://experienceleague.adobe.com/docs/analytics/implementation/appmeasurement-updates.html?lang=en#version-2.1.0
-  // 'ssf',
-  // 'dmp',
-  // 'sell',
   'dfa_qe': 'DoubleClick integration - not implemented',
   'hier2': 'Duplicates hier1',
-  'hier3': 'Duplicates hier1'
+  'hier3': 'Duplicates hier1',
+  'v111': 'Time Prior to Event'
 };
 
+export const ignore = function(key: string, variable: string) {
+  return key.includes('.') ||
+  Object.keys(IGNORE_LIST_MAP).includes(key) ||
+  Object.keys(IGNORE_LIST_MAP).includes(variable)
+}
+// ----------------------- Ignore List ----------------------- //
+
+
+// ----------------------- Validation  ----------------------- //
+
+/* 
+We have 3 ways of validation:
+- equals: Validate the the 2 values are equal
+- present: Validate only that the variable is there
+- array: Validate that each array has all the keys
+**/
+
 // We just validate that the variables are present, we don't care about their values
-export const variableOnlyPresent = [
+export const validateOnlyPresent = [
   'eVar1',
   'mid',
 ]
 
-
 // case we are comparing only that both lists contain the same keys
-export const listsOfVariablesOnlyPresent: Record<string, string> = {
+export const validateArrayKeys: Record<string, string> = {
   'events': ',', // what we need to split for
   'l1': '|'
 }
 
-const ignoreValueMap = {
-  'eVar111': 'Time Prior to Event'
-};
-
-// list of variables that we don't need to compare
-export const IGNORE_LIST = Object.keys(ignoreListMap);
-
-export const ignore = function(key: string, variable: string) {
-  return key.includes('.') ||
-    IGNORE_LIST.includes(key) ||
-    IGNORE_LIST.includes(variable) // ||
-    // IGNORE_LIST.some(item => variable.startsWith(item))
-}
-
-export const ignoreValue = function(variable: string) {
-  return Object.keys(ignoreValueMap).includes(variable);
-}
 

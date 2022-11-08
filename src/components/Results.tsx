@@ -1,21 +1,35 @@
 import React from 'react'
+import { ValidatedParam } from '../utils/util';
 import ResultRow from './ResultRow';
 import './Results.css';
 
 
 interface ResultsProps {
-  results: Array<string>;
+  results: Array<ValidatedParam>;
 }
 
-export function Results({results, ...props}:ResultsProps): React.ReactElement{
-  const rows = results.map((line: string) => <ResultRow information={line} />)
-  return (
+export function Results({results}:ResultsProps): React.ReactElement{
+  const rows = results.map((parameter: ValidatedParam, index: number) => <ResultRow item={parameter}  key={`row-${index}`}/>)
+  return (rows.length ? 
     <div className="results--section">
-        <h3>Output:</h3>
-        <table className="results--table">
+      <table className="results--table">
+        <thead>
+          <tr>
+            <th>Param</th>
+            <th>Variable</th>
+            <th>1st value</th>
+            <th>2nd value</th>
+            <th>method used to compare</th>
+            <th>Status</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
           {rows}
-        </table>
-      </div>
+        </tbody>        
+      </table>
+    </div> 
+    : <></>      
   )
 }
 

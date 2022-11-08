@@ -8,7 +8,6 @@ export default function Description() {
   return(
     <div className="description--area">
       <p>{description}</p>
-      <hr/>
     </div>
   )
 }

@@ -1,7 +1,11 @@
 .description--area {
   max-width: 1120px;
   margin: 0 auto;
-  padding-top: 100px;
+  padding: 15px;
+  background-color: #def1fb;
+  text-align: center;
+  align-items: center;
+  border-radius: 5px;
 }
 
 @media screen and (max-width: 1199px) {

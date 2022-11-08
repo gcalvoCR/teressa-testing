@@ -5,12 +5,6 @@
   margin: 0 auto;
 }
 
-.results--table tr:first-of-type {
-  font-weight: bold;
-  color: white !important;
-  background: rgb(57, 57, 81) !important;
-}
-
 .results--table {
   border: 1px solid #e6e6e6;
   color: #999;
@@ -51,6 +45,16 @@ table {
   border-collapse: collapse;
 }
 
+.results--summary {
+  margin: 0 auto;
+  margin-bottom: 40px;
+}
+
+.results--summary li {
+  margin-left: 40px;
+  color: #999;
+}
+
 @media screen and (max-width: 1100px) {
   .results--section {
     width: 95%;
@@ -71,6 +75,11 @@ table {
   table {
     table-layout:fixed;
     margin: 0 auto;
+  }
+
+  .results--summary {
+    width: 95%;
+    font-size: 10px;
   }
 }
 

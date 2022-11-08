@@ -1,6 +1,6 @@
-import { ignore, ignoreListMap, ignoreValue, listsOfVariablesOnlyPresent, variableOnlyPresent, VAR_DICTIONARY } from "./variables";
+import { ignore, IGNORE_LIST_MAP, validateArrayKeys, validateOnlyPresent, VAR_DICTIONARY } from "./variables";
 
-export interface Resp {
+export interface ResultsResponse {
   eVars: Array<string>,
   eVarsMissing: Array<string>,
   eVarsExtra: Array<string>,
@@ -13,134 +13,177 @@ export interface Resp {
   text: string
 }
 
-export function compareAndGenerateCSV(obj1: Record<string, string>,obj2: Record<string, string>): Resp {
+// need to find a better name for this
 
-  const resp:Resp  = {
-    eVars: [],
-    eVarsMissing: [],
-    eVarsExtra: [],
-    props: [],
-    propsMissing: [],
-    propsExtra: [],
-    events: [],
-    eventsMissing: [],
-    eventsExtra: [],
-    text: ''
+export type Method = 'equals' | 'present' | 'array' | 'domain' | 'pathname'| 'ignored' | 'not defined';
+export type Status = 'passed' | 'failed' | 'ignored' | 'not processed' | 'pending';
+
+export interface Param {
+  key: string,
+  variable: string
+  value1: string,
+  value2: string,
+}
+
+export interface ValidatedParam {
+  param: Param,
+  method: Method, // equals, present, array
+  status: Status, // passed, failed, ignored
+  comments: string,
+}
+
+export function validatePayloads(list: Array<Param>) {
+  const params: Array<ValidatedParam> = []
+
+  for (const [,item] of Object.entries(list)) {
+    // new param
+    const param: ValidatedParam  = { 
+      param: item, 
+      method:'not defined', 
+      status:'not processed', 
+      comments: '',
+    };
+    
+    // validate ignore list
+    if (ignore(item.key, item.variable)) {
+      param.method = 'ignored'
+      param.status = 'ignored'
+      param.comments = IGNORE_LIST_MAP[item.key] ? IGNORE_LIST_MAP[item.key] : '';
+      params.push(param)
+      continue;
+    } 
+      
+    // validate case only present
+    if (Object.keys(validateOnlyPresent).includes(item.key)) { 
+      param.method = 'present'
+      param.status='passed'
+      param.comments = 'Validated all variables are present'
+      params.push(param)
+      continue;
+    }
+
+    // validate case variables with array
+    if (Object.keys(validateArrayKeys).includes(item.key)) {
+      param.method = 'array' 
+      param.status='pending'
+      param.status='pending'
+      params.push(param)
+      continue;
+    }
+        
+    // validate special case g (pathname)
+    if (item.key === 'g'){ // case g
+      param.method='pathname'
+      console.log(item)
+      if (!item.value1 || !item.value2) {
+        param.status='failed'
+        param.comments='missing "g" value'; 
+        params.push(param)
+        continue;
+      } 
+      if (new URL(item.value1).pathname === new URL(item.value2).pathname) { 
+        param.status='passed'
+        param.comments='Leaving out the query params'  
+      } else {
+        param.status='failed'
+        param.comments='Pathnames don\'t match'  
+      }
+      params.push(param)
+      continue;
+    }
+      
+    // validate special case r
+    if (item.key ==='r'){ // case r
+      param.method='domain'
+      if (!item.value1 || !item.value2) {
+        param.status='failed'
+        param.comments='missing "r" value'; 
+        params.push(param)
+        continue;
+      } 
+      if (new URL(item.value1).host === new URL(item.value2).host) { 
+        param.status='passed'
+        param.comments='Just validating the hostname'
+      } else {
+        param.status='failed'
+        param.comments='The hostname is different'
+      }
+      params.push(param)
+      continue;
+    }
+
+    // validate no 2nd value
+    if (!item.value2) {
+      param.method = 'present'
+      param.status='failed';
+      param.comments='Values not showing in 2nd payload'
+      params.push(param)
+      continue;
+    }
+
+    // validate no 1st value
+    if (!item.value1) {
+      param.method = 'present'
+      param.status='ignored';
+      param.comments='Values not showing in 1st payload'
+      params.push(param)
+      continue;
+    }
+
+    // validate validate equals
+    if (item.value1.trim() === item.value2.trim()) {
+      param.method = 'equals'
+      param.status='passed'
+      param.comments='The values are equal'
+    } else {
+      param.method = 'equals'
+      param.status='failed'
+      param.comments='The values are NOT equal'
+    }
+    params.push(param)
+    continue;
   }
+  return params;
+}
 
-  let text = `PARAMETER,VARIABLE,VALUE_1,VALUE_2,STATUS,COMMENTS\n`;
+export function getVariables(obj1: Record<string, string>,obj2: Record<string, string>): Array<Param> {
+
+  const params: Array<Param> = []
 
   for (const [key, value] of Object.entries(obj1)) {
-    const variable: string = VAR_DICTIONARY[key] !== undefined ? VAR_DICTIONARY[key] : ' ';
-    const reason: string = ignoreListMap[key] !== undefined ? ignoreListMap[key] : ' ';
+    // new param
+    const param: Param  = { 
+      key, 
+      variable: VAR_DICTIONARY[key] ? VAR_DICTIONARY[key] : '', 
+      value1: '', 
+      value2: '', 
+    };
+    
     if (key in obj2) {
-      let firstValue = value
-      if (value.includes(',')){
-        firstValue = value.replace(/,/g,' ');
-      }
-      let secondValue = obj2[key];
-      if (obj2[key].includes(',')){
-        secondValue = obj2[key].replace(/,/g,' ');
-      }
-      
-      text += `${key},${variable},${firstValue},${secondValue},`;
-
-      // Grabbing list of props and eVars
-      if(variable.includes('eVar')) resp.eVars.push(variable);
-      if(variable.includes('prop')) resp.props.push(variable);
-
-      // ignore certain values
-      if (ignore(key, variable)) {
-        text += `ignored,${reason}\n`;
-      } else {
-        if (Object.keys(listsOfVariablesOnlyPresent).includes(key)) { // case 'events and l1'
-          let eventsStatus = `passed,All variables are present\n`;
-          let listOfEvents1: Array<string>  = [];
-          let listOfEvents2: Array<string>  = [];
-          
-          // Get the list of ensighten events
-          const events1 = value.split(listsOfVariablesOnlyPresent[key]);
-          listOfEvents1 = events1.map(val => val.split('=')[0])
-
-          // Get the list of launch events
-          const events2 = obj2[key].split(listsOfVariablesOnlyPresent[key]);
-          listOfEvents2 = events2.map(val => val.split('=')[0])
-          
-
-          
-          // Get the list of additional params
-          const extraEnsightenParams = listOfEvents1.filter(f => !listOfEvents2.includes(f) && f!=='');
-          const extraLaunchParams = listOfEvents2.filter(f => !listOfEvents1.includes(f) && f!=='');
-
-          if(key==='events'){
-            // Adding this show list of events
-            resp.eventsMissing = extraEnsightenParams.sort()
-            resp.eventsExtra = extraLaunchParams.sort()
-            resp.events = listOfEvents1.filter(f => listOfEvents2.includes(f));
-          }
-
-          if(extraEnsightenParams.length > 0) eventsStatus = `failed,Missing in Launch --> ${extraEnsightenParams.join("; ")}\n`;
-          if(extraLaunchParams.length > 0) eventsStatus = `failed,Launch has extra params --> ${extraLaunchParams.join("; ")} \n`;
-          
-          text += eventsStatus;
-         
-        } else if (key ==='g'){ // case g
-          if (new URL(firstValue).pathname === new URL(secondValue).pathname) { 
-            text += `passed,Leaving out the query params\n`;
-          } else {
-            text += `failed,pathnames don't match\n`;
-          }
-        } else if (key ==='r'){ // case r
-        if (new URL(firstValue).host === new URL(secondValue).host) { 
-          text += `passed,Just validating the hostname\n`;
-        } else {
-          text += `failed,The hostname is different\n`;
-        }
-      }
-        else if (variableOnlyPresent.includes(key) && firstValue !== '' && secondValue!== '') {
-          text += `passed,Only comparing variables are present\n`;
-        } else if (ignoreValue(variable) || value.trim() === obj2[key].trim()) {
-          text += `passed,-\n`;
-        } else if (value.toLowerCase().trim() === obj2[key].toLowerCase().trim()) {
-          text += `failed,Case sensitive failing\n`;
-        } else {
-          text += `failed,Not equal\n`;
-        }
-      }
+      param.value1 = value;
+      param.value2 = obj2[key];
     } else {
-
-      // Grabbing list of props and eVars
-      if(variable.includes('eVar')) resp.eVarsMissing.push(variable);
-      if(variable.includes('prop')) resp.propsMissing.push(variable);
-
-      // case values only in first object
-      if (ignore(key, variable)) {
-        text += `${key},${variable},${value}, ,ignored,${reason}\n`;
-      } else {
-        text += `${key},${variable},${value}, ,failed,Not showing in Launch\n`;
-      }
+      param.value1 = value;
+      param.value2 = '';
     }
+    params.push(param);
   }
   for (const [key, value] of Object.entries(obj2)) {
     if(Object.entries(obj2).length === 0) break; // this case makes sure we have both analytics requests
     
-    // case values only
-    const variable: string = VAR_DICTIONARY[key] !== undefined ? VAR_DICTIONARY[key] : ' ';
-    const reason: string = ignoreListMap[key] !== undefined ? ignoreListMap[key] : ' ';
-
+    // new param
     if (!(key in obj1)) {
-      // Grabbing list of props and eVars
-      if(variable.includes('eVar')) resp.eVarsExtra.push(variable);
-      if(variable.includes('prop')) resp.propsExtra.push(variable);
-
-      if (ignore(key, variable)) {
-        text += `${key},${variable}, ,${value},ignored,${reason}\n`;
-      } else {
-        text += `${key},${variable}, ,${value},new,-\n`;
+      const param: Param  = { 
+        key, 
+        variable: VAR_DICTIONARY[key] ? VAR_DICTIONARY[key] : '',
+        value1:'',
+        value2: value, 
       }
+      params.push(param)
     }
+    // make the list shorter
+    delete obj2[key];
   }
   
-  resp.text = text;
-  return resp;
+  return params;
 }
